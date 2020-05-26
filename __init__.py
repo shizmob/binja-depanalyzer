@@ -49,9 +49,35 @@ def analyze_dependency(bv, filename, candidates):
 					set_symbol_type(bv, osym, type)
 				log_info('Renamed: {} -> {}'.format(osym.name, name))
 
+def analyze_self(bv):
+	""" Analyze metadata for self and apply found information """
+	ownname = os.path.realpath(bv.file.filename)
+	basename, ext = os.path.splitext(os.path.basename(ownname))
+	dbname = ownname[:-len(ext)] + '.bndb'
 
+	# Get all own modules and symbols
+	candidates = {}
+	for type in (SymbolType.DataSymbol, SymbolType.FunctionSymbol):
+		for sym in bv.get_symbols_of_type(type):
+			ident = get_identifier(bv, sym)
+			if ident is None:
+				continue
+			syms = candidates.setdefault(ident, [])
+			syms.append(sym)
 
-def analyze_all(bv):
+	# Find any associated dependency files and process them
+	for path in get_search_paths(bv):
+		pattern = os.path.join(path, '{}.*'.format(basename))
+		for filename in sorted(glob.glob(pattern), key=prioritize_file_types):
+			if not os.path.isfile(filename):
+				continue
+			if os.path.realpath(filename) in (ownname, dbname):
+				continue
+
+			log_info('Processing: {}...'.format(filename))
+			analyze_dependency(bv, filename, candidates)
+
+def analyze_dependencies(bv):
 	""" Get all imported symbols, analyze dependencies and apply found information """
 	# Get all imported modules and symbols
 	candidates = {}
@@ -78,7 +104,8 @@ def analyze_all(bv):
 			log_info('Processing: {}...'.format(filename))
 			analyze_dependency(bv, filename, candidates[raw_name])
 
-PluginCommand.register("Analyze dependencies...", "Resolve imports for analyzed dependencies", analyze_all)
+PluginCommand.register("Analyze self", "Resolve metadata for self", analyze_self)
+PluginCommand.register("Analyze dependencies", "Resolve metadata for analyzed dependencies", analyze_dependencies)
 
 
 settings = Settings()
