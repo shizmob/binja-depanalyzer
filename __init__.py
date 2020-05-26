@@ -6,7 +6,10 @@ from binaryninja.enums import SymbolType, SettingsScope
 from binaryninja.settings import Settings
 from binaryninja.plugin import PluginCommand
 
-from .util import supports_ordinals, get_symbol_module, set_symbol_name, set_symbol_type, demangle, set_type_metadata
+from .util import (
+	normalize_module, supports_ordinals, demangle,
+	get_symbol_module, set_symbol_name, set_symbol_type, set_type_metadata
+)
 from .base import MatchingMethod, parse_dependency
 # dependency formats
 from . import msdef, idt, binja
@@ -36,7 +39,7 @@ def analyze_dependency(bv, module, filename, candidates):
 			for ref, t in dep.get_user_types(nsym).items():
 				newname = bv.define_type(ref.type_id, ref.name, t)
 				newtype = bv.get_type_by_name(newname)
-				set_type_metadata(bv, newtype, 'source', module)
+				set_type_metadata(bv, newtype, 'namespace', normalize_module(module))
 				log_info('Imported type: {}'.format(newname))
 
 			for osym in candidates.pop(ident):
@@ -57,14 +60,14 @@ def prioritize_file_types(k):
 	return 10
 
 def find_possible_dependencies(bv, names):
-	matchnames = [n.lower() for n in names]
+	matchnames = [normalize_module(n) for n in names]
 	for path in get_search_paths(bv):
 		pattern = os.path.join(path, '*.*')
 		for filename in sorted(glob.iglob(pattern), key=prioritize_file_types):
 			if not os.path.isfile(filename):
 				continue
 			basename, _ = os.path.splitext(os.path.basename(filename))
-			if basename.lower() not in matchnames:
+			if normalize_module(basename) not in matchnames:
 				continue
 			yield (basename, filename)
 
@@ -101,7 +104,7 @@ def analyze_dependencies(bv):
 			ident = get_identifier(bv, sym)
 			if ident is None:
 				continue
-			module = get_symbol_module(sym).lower()
+			module = normalize_module(get_symbol_module(sym))
 			mod_syms = candidates.setdefault(module, {})
 			these_syms = mod_syms.setdefault(ident, [])
 			these_syms.append(sym)

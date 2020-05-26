@@ -67,6 +67,10 @@ def get_symbol_module(sym):
 	""" Get the module name belonging to a symbol """
 	return sym.namespace.name[0]
 
+def normalize_module(module):
+	""" Normalize a module name """
+	return module.lower()
+
 def find_nested_types(bv, t):
 	""" Find all user-defined types in `t` """
 	# Find sub-types to research
