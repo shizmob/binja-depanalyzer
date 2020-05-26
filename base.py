@@ -12,6 +12,9 @@ class Dependency:
     def get_exports(self):
         raise NotImplemented
 
+    def get_symbol_type(self, sym):
+        return None
+
 class MatchingMethod(enum.Enum):
     Auto    = 'auto'
     Ordinal = 'ordinal'

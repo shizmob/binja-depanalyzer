@@ -6,7 +6,7 @@ from binaryninja.enums import SymbolType, SettingsScope
 from binaryninja.settings import Settings
 from binaryninja.plugin import PluginCommand
 
-from .util import supports_ordinals, get_symbol_module, set_symbol_name, demangle
+from .util import supports_ordinals, get_symbol_module, set_symbol_name, set_symbol_type, demangle
 from .base import MatchingMethod, parse_dependency
 # dependency formats
 from . import msdef, idt, binja
@@ -41,9 +41,12 @@ def analyze_dependency(bv, filename, candidates):
 			if ident not in candidates:
 				continue
 			name = demangle(bv, nsym.full_name)
+			type = dep.get_symbol_type(nsym)
 
 			for osym in candidates.pop(ident):
 				set_symbol_name(bv, osym, name)
+				if type is not None:
+					set_symbol_type(bv, osym, type)
 				log_info('Renamed: {} -> {}'.format(osym.name, name))
 
 

@@ -1,5 +1,5 @@
 from binaryninja.enums import SymbolType, SymbolBinding
-from binaryninja.types import Symbol
+from binaryninja.types import Symbol, Type, FunctionParameter
 from binaryninja.binaryview import BinaryViewType
 
 from .util import get_symbol_name
@@ -23,6 +23,22 @@ class BinaryViewDependency(Dependency):
 
     def get_exports(self):
         return [
-            Symbol(s.type, s.address, s.short_name, full_name=get_symbol_name(self.bv, s), raw_name=s.raw_name, binding=s.binding, namespace=s.namespace, ordinal=s.ordinal)
+            Symbol(s.type, s.address,
+                s.short_name, full_name=get_symbol_name(self.bv, s), raw_name=s.raw_name,
+                binding=s.binding, namespace=s.namespace, ordinal=s.ordinal
+            )
             for s in self.bv.get_symbols() if s.type in EXPORTABLE_TYPES and s.binding == SymbolBinding.GlobalBinding
         ]
+
+    def get_symbol_type(self, sym):
+        if self.bv.has_database:
+            func = self.bv.get_function_at(sym.address)
+            if func:
+                return Type.function(
+                    func.return_type, [FunctionParameter(param.type, param.name, location=param) for param in func.parameter_vars],
+                    calling_convention=func.calling_convention, variable_arguments=func.has_variable_arguments, stack_adjust=func.stack_adjustment
+                )
+            dvar = self.bv.get_data_var_at(sym.address)
+            if dvar:
+                return dvar.type
+        return None

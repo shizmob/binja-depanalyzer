@@ -1,4 +1,5 @@
 import os
+from binaryninja.types import Symbol, Type
 from binaryninja.demangle import get_qualified_name, demangle_gnu3, demangle_ms
 
 
@@ -48,6 +49,17 @@ def set_symbol_name(bv, sym, name):
 		new_sym = Symbol(sym.type, sym.address, name, binding=sym.binding, namespace=sym.namespace, ordinal=sym.ordinal)
 		bv.undefine_auto_symbol(sym)
 		bv.define_user_symbol(new_sym)
+
+def set_symbol_type(bv, sym, type):
+	""" Re-type symbol to given type """
+	func = bv.get_function_at(sym.address)
+	if func:
+		func.set_user_type(type)
+		return
+	dvar = bv.get_data_var_at(sym.address)
+	if dvar:
+		bv.undefine_data_var(dvar.address)
+		bv.define_user_data_var(dvar.address, Type.pointer(bv.arch, type))
 		return
 
 def get_symbol_module(sym):
