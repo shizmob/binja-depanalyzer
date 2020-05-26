@@ -20,6 +20,7 @@ Current analyses:
   - Import-by-ordinal
   - Import-by-address (e.g. embedded systems)
   - From renamed functions in a Binary Ninja database (e.g. manually analyzed obfuscated symbol names)
+* Resolve function and data types for matched symbols
 
 It will try to find files in `depanalyzer.path` with the same basename of any of the dependencies, and analyze them if they match anything loadable by the plugin.
 
