@@ -15,6 +15,9 @@ class Dependency:
     def get_symbol_type(self, sym):
         return None
 
+    def get_user_types(self, sym):
+        return {}
+
 class MatchingMethod(enum.Enum):
     Auto    = 'auto'
     Ordinal = 'ordinal'

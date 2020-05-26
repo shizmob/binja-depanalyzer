@@ -1,4 +1,5 @@
 import os
+import collections
 from binaryninja.types import Symbol, Type
 from binaryninja.demangle import get_qualified_name, demangle_gnu3, demangle_ms
 
@@ -65,3 +66,40 @@ def set_symbol_type(bv, sym, type):
 def get_symbol_module(sym):
 	""" Get the module name belonging to a symbol """
 	return sym.namespace.name[0]
+
+def find_nested_types(bv, t):
+	""" Find all user-defined types in `t` """
+	# Find sub-types to research
+	haystack = set()
+	if t.return_value is not None:
+		haystack.add(t.return_value)
+	if t.element_type is not None:
+		haystack.add(t.element_type)
+	if t.target is not None:
+		haystack.add(t.target)
+		haystack.update(p.type for p in t.parameters)
+	if t.named_type_reference is not None:
+		ref = bv.get_type_by_id(t.named_type_reference.type_id)
+		if ref is not None:
+			haystack.add(ref)
+
+	# Finally, add concrete types
+	types = collections.OrderedDict()
+	for ht in haystack:
+		types.update(find_nested_types(bv, ht))
+	if t.structure is not None:
+		for m in t.structure.members:
+			types.update(find_nested_types(bv, m.type))
+		types[t.registered_name] = t
+	if t.enumeration is not None:
+		types[t.registered_name] = t
+	return types
+
+def _get_type_metadata_key(type, key):
+	return 'depanalyzer.types.{}.{}'.format(type.registered_name.name, key)
+
+def get_type_metadata(bv, type, key):
+	return bv.query_metadata(_get_type_metadata_key(type, key))
+
+def set_type_metadata(bv, type, key, value):
+	return bv.store_metadata(_get_type_metadata_key(type, key), value)

@@ -2,7 +2,7 @@ from binaryninja.enums import SymbolType, SymbolBinding
 from binaryninja.types import Symbol, Type, FunctionParameter
 from binaryninja.binaryview import BinaryViewType
 
-from .util import get_symbol_name
+from .util import get_symbol_name, find_nested_types
 from .base import Dependency, register_dependency_type
 
 EXPORTABLE_TYPES = {SymbolType.FunctionSymbol, SymbolType.DataSymbol}
@@ -42,3 +42,10 @@ class BinaryViewDependency(Dependency):
             if dvar:
                 return dvar.type
         return None
+
+    def get_user_types(self, sym):
+        if self.bv.has_database:
+            symtype = self.get_symbol_type(sym)
+            if symtype is not None:
+                return find_nested_types(self.bv, symtype)
+        return {}

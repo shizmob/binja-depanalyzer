@@ -6,7 +6,7 @@ from binaryninja.enums import SymbolType, SettingsScope
 from binaryninja.settings import Settings
 from binaryninja.plugin import PluginCommand
 
-from .util import supports_ordinals, get_symbol_module, set_symbol_name, set_symbol_type, demangle
+from .util import supports_ordinals, get_symbol_module, set_symbol_name, set_symbol_type, demangle, set_type_metadata
 from .base import MatchingMethod, parse_dependency
 # dependency formats
 from . import msdef, idt, binja
@@ -32,7 +32,7 @@ def prioritize_file_types(k):
 		return 5
 	return 10
 
-def analyze_dependency(bv, filename, candidates):
+def analyze_dependency(bv, module, filename, candidates):
 	""" Analyze single dependency and apply found information to given symbols """
 	for dep in parse_dependency(filename):
 		# Rename imports to more accurate information from dependency
@@ -42,6 +42,12 @@ def analyze_dependency(bv, filename, candidates):
 				continue
 			name = demangle(bv, nsym.full_name)
 			type = dep.get_symbol_type(nsym)
+
+			for ref, t in dep.get_user_types(nsym).items():
+				newname = bv.define_type(ref.type_id, ref.name, t)
+				newtype = bv.get_type_by_name(newname)
+				set_type_metadata(bv, newtype, 'source', module)
+				log_info('Imported type: {}'.format(newname))
 
 			for osym in candidates.pop(ident):
 				set_symbol_name(bv, osym, name)
@@ -75,7 +81,7 @@ def analyze_self(bv):
 				continue
 
 			log_info('Processing: {}...'.format(filename))
-			analyze_dependency(bv, filename, candidates)
+			analyze_dependency(bv, basename, filename, candidates)
 
 def analyze_dependencies(bv):
 	""" Get all imported symbols, analyze dependencies and apply found information """
@@ -102,7 +108,7 @@ def analyze_dependencies(bv):
 				continue
 
 			log_info('Processing: {}...'.format(filename))
-			analyze_dependency(bv, filename, candidates[raw_name])
+			analyze_dependency(bv, raw_name, filename, candidates[raw_name])
 
 PluginCommand.register("Analyze self", "Resolve metadata for self", analyze_self)
 PluginCommand.register("Analyze dependencies", "Resolve metadata for analyzed dependencies", analyze_dependencies)
