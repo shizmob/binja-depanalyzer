@@ -55,10 +55,10 @@ class DEFDependency(Dependency):
 		with open(file, 'r') as f:
 			for line in f.readlines():
 				# Line format: NAME [ARG1 ARG2 [...] ARGn] [; comment]
-				line = quoted_split(line, ';')[0]
+				line = quoted_split(line, ';')[0].strip()
 				if not line:
 					continue
-				parts = quoted_split(line.strip())
+				parts = quoted_split(line)
 				name = parts[0]
 				parts = parts[1:]
 
