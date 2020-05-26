@@ -40,13 +40,13 @@ def analyze_dependency(bv, filename, candidates):
 			ident = get_identifier(bv, nsym)
 			if ident not in candidates:
 				continue
+			name = demangle(bv, nsym.full_name)
 
-			new_name = demangle(bv, nsym.full_name)
-			osym = candidates[ident]
-			set_symbol_name(bv, osym, demangle(bv, nsym.full_name))
-			del candidates[ident]
+			for osym in candidates.pop(ident):
+				set_symbol_name(bv, osym, name)
+				log_info('Renamed: {} -> {}'.format(osym.name, name))
 
-			log_info('Renamed: {} -> {}...'.format(osym.name, new_name))
+
 
 def analyze_all(bv):
 	""" Get all imported symbols, analyze dependencies and apply found information """
@@ -54,9 +54,11 @@ def analyze_all(bv):
 	candidates = {}
 	for type in (SymbolType.ImportAddressSymbol, SymbolType.ImportedFunctionSymbol, SymbolType.ImportedDataSymbol):
 		for sym in bv.get_symbols_of_type(type):
+			ident = get_identifier(bv, sym)
 			module = get_symbol_module(sym).lower()
-			syms = candidates.setdefault(module, {})
-			syms[get_identifier(bv, sym)] = sym
+			mod_syms = candidates.setdefault(module, {})
+			these_syms = mod_syms.setdefault(ident, [])
+			these_syms.append(sym)
 
 	# Find any associated dependency files and process them
 	for path in get_search_paths(bv):
