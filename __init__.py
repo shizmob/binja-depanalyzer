@@ -22,16 +22,6 @@ def get_identifier(bv, sym):
 	elif method == MatchingMethod.Name:
 		return sym.raw_name.split('@', 1)[0]
 
-def prioritize_file_types(k):
-	""" Give a proper priority to certain file types when sorting """
-	# BN databases should always go first
-	if k.endswith('.bndb'):
-		return 0
-	# Definition files matter more than raw files
-	if any(k.endswith(e) for e in ('.def', '.idt')):
-		return 5
-	return 10
-
 def analyze_dependency(bv, module, filename, candidates):
 	""" Analyze single dependency and apply found information to given symbols """
 	for dep in parse_dependency(filename):
@@ -55,6 +45,29 @@ def analyze_dependency(bv, module, filename, candidates):
 					set_symbol_type(bv, osym, type)
 				log_info('Renamed: {} -> {}'.format(osym.name, name))
 
+
+def prioritize_file_types(k):
+	""" Give a proper priority to certain file types when sorting """
+	# BN databases should always go first
+	if k.endswith('.bndb'):
+		return 0
+	# Definition files matter more than raw files
+	if any(k.endswith(e) for e in ('.def', '.idt')):
+		return 5
+	return 10
+
+def find_possible_dependencies(bv, names):
+	matchnames = [n.lower() for n in names]
+	for path in get_search_paths(bv):
+		pattern = os.path.join(path, '*.*')
+		for filename in sorted(glob.iglob(pattern), key=prioritize_file_types):
+			if not os.path.isfile(filename):
+				continue
+			basename, _ = os.path.splitext(os.path.basename(filename))
+			if basename.lower() not in matchnames:
+				continue
+			yield (basename, filename)
+
 def analyze_self(bv):
 	""" Analyze metadata for self and apply found information """
 	ownname = os.path.realpath(bv.file.filename)
@@ -72,16 +85,12 @@ def analyze_self(bv):
 			syms.append(sym)
 
 	# Find any associated dependency files and process them
-	for path in get_search_paths(bv):
-		pattern = os.path.join(path, '{}.*'.format(basename))
-		for filename in sorted(glob.glob(pattern), key=prioritize_file_types):
-			if not os.path.isfile(filename):
-				continue
-			if os.path.realpath(filename) in (ownname, dbname):
-				continue
+	for module, filename in find_possible_dependencies(bv, [basename]):
+		if os.path.realpath(filename) in (ownname, dbname):
+			continue
 
-			log_info('Processing: {}...'.format(filename))
-			analyze_dependency(bv, basename, filename, candidates)
+		log_info('Processing: {}...'.format(filename))
+		analyze_dependency(bv, None, filename, candidates)
 
 def analyze_dependencies(bv):
 	""" Get all imported symbols, analyze dependencies and apply found information """
@@ -90,25 +99,17 @@ def analyze_dependencies(bv):
 	for type in (SymbolType.ImportAddressSymbol, SymbolType.ImportedFunctionSymbol, SymbolType.ImportedDataSymbol):
 		for sym in bv.get_symbols_of_type(type):
 			ident = get_identifier(bv, sym)
+			if ident is None:
+				continue
 			module = get_symbol_module(sym).lower()
 			mod_syms = candidates.setdefault(module, {})
 			these_syms = mod_syms.setdefault(ident, [])
 			these_syms.append(sym)
 
 	# Find any associated dependency files and process them
-	for path in get_search_paths(bv):
-		pattern = os.path.join(path, '*.*')
-		for filename in sorted(glob.glob(pattern), key=prioritize_file_types):
-			if not os.path.isfile(filename):
-				continue
-
-			raw_name, _ = os.path.splitext(os.path.basename(filename))
-			raw_name = raw_name.lower()
-			if raw_name not in candidates:
-				continue
-
-			log_info('Processing: {}...'.format(filename))
-			analyze_dependency(bv, raw_name, filename, candidates[raw_name])
+	for module, filename in find_possible_dependencies(bv, candidates.keys()):
+		log_info('Processing: {}...'.format(filename))
+		analyze_dependency(bv, module, filename, candidates[module])
 
 PluginCommand.register("Analyze self", "Resolve metadata for self", analyze_self)
 PluginCommand.register("Analyze dependencies", "Resolve metadata for analyzed dependencies", analyze_dependencies)
