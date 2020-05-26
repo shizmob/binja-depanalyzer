@@ -20,7 +20,7 @@ def get_identifier(bv, sym):
 	elif method == MatchingMethod.Address:
 		return sym.address
 	elif method == MatchingMethod.Name:
-		return sym.raw_name
+		return sym.raw_name.split('@', 1)[0]
 
 def prioritize_file_types(k):
 	""" Give a proper priority to certain file types when sorting """
@@ -52,7 +52,7 @@ def analyze_all(bv):
 	""" Get all imported symbols, analyze dependencies and apply found information """
 	# Get all imported modules and symbols
 	candidates = {}
-	for type in (SymbolType.ImportedFunctionSymbol, SymbolType.ImportedDataSymbol):
+	for type in (SymbolType.ImportAddressSymbol, SymbolType.ImportedFunctionSymbol, SymbolType.ImportedDataSymbol):
 		for sym in bv.get_symbols_of_type(type):
 			module = get_symbol_module(sym).lower()
 			syms = candidates.setdefault(module, {})

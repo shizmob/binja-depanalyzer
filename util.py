@@ -36,12 +36,19 @@ def get_symbol_name(bv, sym):
 
 def set_symbol_name(bv, sym, name):
 	""" Rename symbol to given name """
-	# We can't rename function symbols directly yet,
-	# so for now only rename any associated function stub
+	# If the symbol has an associated function, this is way quicker and also updates it.
 	func = bv.get_function_at(sym.address)
-	if not func:
+	if func:
+		func.name = name
+	else:
+		name = name.split('@', 1)[0]
+		old_suffixes = sym.raw_name.split('@')[1:]
+		if old_suffixes:
+			name += '@' + '@'.join(old_suffixes)
+		new_sym = Symbol(sym.type, sym.address, name, binding=sym.binding, namespace=sym.namespace, ordinal=sym.ordinal)
+		bv.undefine_auto_symbol(sym)
+		bv.define_user_symbol(new_sym)
 		return
-	func.name = name
 
 def get_symbol_module(sym):
 	""" Get the module name belonging to a symbol """
