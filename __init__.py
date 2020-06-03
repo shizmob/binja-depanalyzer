@@ -112,7 +112,7 @@ def analyze_dependencies(bv):
 	# Find any associated dependency files and process them
 	for module, filename in find_possible_dependencies(bv, candidates.keys()):
 		log_info('Processing: {}...'.format(filename))
-		analyze_dependency(bv, module, filename, candidates[module])
+		analyze_dependency(bv, module, filename, candidates[normalize_module(module)])
 
 PluginCommand.register("Analyze self", "Resolve metadata for self", analyze_self)
 PluginCommand.register("Analyze dependencies", "Resolve metadata for analyzed dependencies", analyze_dependencies)
