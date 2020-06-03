@@ -6,7 +6,7 @@ from .base import Dependency, register_dependency_type
 class IDTDependency(Dependency):
 	@classmethod
 	def can_parse(self, file):
-		return file.endswith('.idt')
+		return file.lower().endswith('.idt')
 
 	def __init__(self, file):
 		self.declaration = None

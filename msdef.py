@@ -1,5 +1,3 @@
-import os
-
 from binaryninja.types import Symbol
 from binaryninja.enums import SymbolType
 from .base import Dependency, register_dependency_type
@@ -45,7 +43,7 @@ class DEFDependency(Dependency):
 
 	@classmethod
 	def can_parse(cls, file):
-		return file.endswith('.def')
+		return file.lower().endswith('.def')
 
 	def __init__(self, file):
 		self.sections = []
